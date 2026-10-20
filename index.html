@@ -586,7 +586,8 @@
                 if (fileType === 'pdf') {
                     try {
                         const arrayBuffer = await file.arrayBuffer();
-                        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                        // Pass a slice to PDF.js so the main arrayBuffer stays intact for pdf-lib
+                        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
 
                         for (let pNum = 1; pNum <= pdfDoc.numPages; pNum++) {
                             const pdfPage = await pdfDoc.getPage(pNum);
