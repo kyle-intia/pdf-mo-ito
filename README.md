@@ -2,7 +2,7 @@
 
 **PDF Mo Ito** is a modern, responsive, and privacy-focused client-side web application designed to handle everyday document manipulation tasks directly in your browser. No server uploads, no data tracking, and lightning-fast execution.
 
-🌐 **Live Demo:** [View Live Site](https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/) *(Replace with your actual GitHub Pages URL)*
+🌐 **Live Demo:** [View Live Site](https://kyle-intia.github.io/pdf-mo-ito/)
 
 ---
 
@@ -47,4 +47,4 @@ Because this project is built using vanilla HTML, CSS, and JavaScript with CDN d
 
 1. Clone or download this repository:
    ```bash
-   git clone [https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git](https://github.com/YOUR-USERNAME/YOUR-REPO-NAME.git)
+   git clone [https://github.com/kyle-intia/pdf-mo-ito.git](https://github.com/kyle-intia/pdf-mo-ito.git)
