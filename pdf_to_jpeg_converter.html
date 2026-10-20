@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Mo Ito</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- pdf-lib CDN for combining, editing and modifying PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <!-- JSZip CDN for ZIP archives -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- SortableJS for Drag-and-Drop page reordering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(107, 114, 128, 0.7);
+        }
+        .sortable-ghost {
+            opacity: 0.4;
+            transform: scale(0.95);
+            border: 2px dashed #2563eb !important;
+        }
+        .sortable-drag {
+            cursor: grabbing !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .custom-range-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #2563eb;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-full flex flex-col font-sans transition-colors duration-200">
+
+    <!-- Header Navigation -->
+    <header class="bg-white/90 dark:bg-slate-800/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 rounded-2xl text-white shadow-md">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">PDF Mo Ito</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Combine • Convert • Reorder Pages • 100% Offline & Private</p>
+                </div>
+            </div>
+
+            <!-- Header Mode Tabs & Actions -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Navigation Tabs -->
+                <div class="bg-slate-100 dark:bg-slate-900/80 p-1 rounded-xl flex space-x-1 border border-slate-200/80 dark:border-slate-700">
+                    <button id="tabCombine" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm">
+                        <i data-lucide="merge" class="w-3.5 h-3.5"></i>
+                        <span>Combine PDF</span>
+                    </button>
+                    <button id="tabPdfToImg" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <i data-lucide="file-image" class="w-3.5 h-3.5"></i>
+                        <span>PDF to Image</span>
+                    </button>
+                    <button id="tabImgToPdf" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <i data-lucide="image-plus" class="w-3.5 h-3.5"></i>
+                        <span>Images to PDF</span>
+                    </button>
+                </div>
+
+                <button id="themeToggleBtn" class="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors" title="Toggle Theme">
+                    <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Notification Toast Container -->
+        <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+        <!-- Hidden Global Input Elements -->
+        <input type="file" id="combinerFileInput" accept="application/pdf,image/jpeg,image/png,image/webp,image/bmp" multiple class="hidden" />
+        <input type="file" id="pdfToImgFileInput" accept="application/pdf" multiple class="hidden" />
+        <input type="file" id="imgToPdfFileInput" accept="image/jpeg,image/png,image/webp,image/bmp,image/gif" multiple class="hidden" />
+
+        <!-- Global Progress Bar Banner -->
+        <div id="globalProgressCard" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm animate-fade-in">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="loader-2" class="w-4 h-4 text-blue-600 dark:text-blue-400 animate-spin"></i>
+                    <span id="progressStatusText" class="text-xs font-semibold text-slate-700 dark:text-slate-200">Processing files...</span>
+                </div>
+                <span id="progressPercentText" class="text-xs font-bold text-blue-600 dark:text-blue-400">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-2.5 overflow-hidden">
+                <div id="progressBar" class="bg-gradient-to-r from-blue-600 to-indigo-600 h-2.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- ================= MODE 1: COMBINER & REORDER ================= -->
+        <section id="combinerModeSection" class="mode-section flex flex-col gap-6">
+            <!-- Dropzone / Landing when empty -->
+            <div id="combinerDropzone" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-slate-800/80 rounded-2xl p-10 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                <div class="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="file-plus-2" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-1">
+                    Select PDFs or Images to Merge & Reorder
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">
+                    Combine multiple PDFs and images into a single custom document. Reorder pages, rotate, delete, or add headers, footers & page numbers.
+                </p>
+                <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm gap-2">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Add Files (PDF, JPG, PNG)
+                </div>
+            </div>
+
+            <!-- Active Workspace Grid + Side Controls -->
+            <div id="combinerWorkspace" class="hidden flex-col lg:flex-row gap-6">
+                <!-- Left Control Panel -->
+                <div class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4">
+                    <!-- File Management Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-3">
+                        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                <i data-lucide="files" class="w-4 h-4 text-blue-500"></i> Queue Summary
+                            </h3>
+                            <button id="combinerClearBtn" class="text-xs font-semibold text-red-500 hover:text-red-700 dark:hover:text-red-400 flex items-center gap-1">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear
+                            </button>
+                        </div>
+                        
+                        <div id="combinerQueueList" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                            <!-- Items populated dynamically -->
+                        </div>
+
+                        <button id="combinerAddMoreBtn" class="w-full py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add More Files
+                        </button>
+                    </div>
+
+                    <!-- Page Customization Controls -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                            <i data-lucide="sliders" class="w-4 h-4 text-indigo-500"></i> Header, Footer & Watermark
+                        </h3>
+
+                        <!-- Page Numbers Option -->
+                        <div class="flex items-center justify-between">
+                            <label for="enablePageNumbers" class="text-xs font-medium text-slate-700 dark:text-slate-300">Add Page Numbers</label>
+                            <input type="checkbox" id="enablePageNumbers" checked class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                        </div>
+
+                        <div id="pageNumberSettings" class="flex flex-col gap-2 text-xs">
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-slate-500 dark:text-slate-400">Position:</span>
+                                <select id="pageNumberPos" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs">
+                                    <option value="bottom-right">Bottom Right</option>
+                                    <option value="bottom-center" selected>Bottom Center</option>
+                                    <option value="top-right">Top Right</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Header / Footer Text -->
+                        <div class="flex flex-col gap-1.5">
+                            <label for="headerText" class="text-xs font-medium text-slate-700 dark:text-slate-300">Header Text (Optional)</label>
+                            <input type="text" id="headerText" placeholder="e.g. Confidential Report" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Watermark -->
+                        <div class="flex flex-col gap-1.5">
+                            <label for="watermarkText" class="text-xs font-medium text-slate-700 dark:text-slate-300">Watermark Text (Optional)</label>
+                            <input type="text" id="watermarkText" placeholder="e.g. DRAFT" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+
+                        <!-- Action Export Button -->
+                        <button id="exportCombinedPdfBtn" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all mt-2">
+                            <i data-lucide="download" class="w-4 h-4"></i> Generate Combined PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Interactive Page Grid -->
+                <div class="flex-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex flex-col gap-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-700/60 pb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                Page Ordering Canvas
+                                <span id="totalPageCountBadge" class="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">0 Pages</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Drag and drop pages to rearrange. Hover over a page to rotate or remove.</p>
+                        </div>
+
+                        <!-- Bulk Quick Actions -->
+                        <div class="flex items-center gap-2">
+                            <button id="rotateAllCwBtn" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1">
+                                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> Rotate All
+                            </button>
+                            <button id="selectAllPagesCombinerBtn" class="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium">
+                                Select All
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Drag and Drop Canvas Grid -->
+                    <div id="combinerPageGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 min-h-[300px] p-2 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <!-- Pages dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= MODE 2: PDF TO JPEG / IMAGE ================= -->
+        <section id="pdfToImgModeSection" class="mode-section hidden flex-col gap-6">
+            <div id="pdfToImgDropzone" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-slate-800/80 rounded-2xl p-10 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                <div class="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="file-image" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-1">
+                    Select PDFs to Convert to Images
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">
+                    Extract document pages into JPEG, PNG, or WEBP images with custom DPI resolutions and ZIP archiving.
+                </p>
+                <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm gap-2">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Select PDF Files
+                </div>
+            </div>
+
+            <!-- PDF to Image Workspace -->
+            <div id="pdfToImgWorkspace" class="hidden flex-col gap-6">
+                <!-- Top Toolbar & Settings -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex flex-col lg:flex-row gap-6 justify-between items-start lg:items-center">
+                    <div class="flex items-center gap-3">
+                        <button id="pdfToImgAddBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow flex items-center gap-1.5">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add PDFs
+                        </button>
+                        <button id="pdfToImgClearBtn" class="bg-slate-100 dark:bg-slate-700 hover:bg-red-50 hover:text-red-600 text-slate-700 dark:text-slate-300 text-xs font-semibold px-3 py-2.5 rounded-xl flex items-center gap-1.5">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i> Clear Queue
+                        </button>
+                    </div>
+
+                    <!-- Conversion Options -->
+                    <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                        <!-- Format Select -->
+                        <div class="flex flex-col gap-1">
+                            <label for="imgOutputFormat" class="text-xs font-semibold text-slate-600 dark:text-slate-300">Format</label>
+                            <select id="imgOutputFormat" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="image/jpeg" selected>JPEG (.jpg)</option>
+                                <option value="image/png">PNG (.png)</option>
+                                <option value="image/webp">WEBP (.webp)</option>
+                            </select>
+                        </div>
+
+                        <!-- DPI Preset Select -->
+                        <div class="flex flex-col gap-1">
+                            <label for="dpiSelect" class="text-xs font-semibold text-slate-600 dark:text-slate-300">Target Resolution</label>
+                            <select id="dpiSelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                                <option value="1.0">72 DPI (Standard Web)</option>
+                                <option value="1.5" selected>150 DPI (High Quality)</option>
+                                <option value="2.0">200 DPI (Ultra Sharp)</option>
+                                <option value="3.0">300 DPI (Print Scale)</option>
+                            </select>
+                        </div>
+
+                        <!-- Quality Slider -->
+                        <div class="flex flex-col gap-1 min-w-[130px]">
+                            <div class="flex justify-between items-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                <span>Quality</span>
+                                <span id="imgQualityVal" class="text-blue-600 dark:text-blue-400">90%</span>
+                            </div>
+                            <input type="range" id="imgQualitySlider" min="10" max="100" value="90" class="custom-range-slider w-full accent-blue-600 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-lg appearance-none cursor-pointer">
+                        </div>
+
+                        <button id="renderAllPdfToImgBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 transition-all ml-auto lg:ml-0">
+                            <i data-lucide="play" class="w-4 h-4"></i>
+                            <span>Render All Pages</span>
+                        </button>
+
+                        <button id="downloadPdfToImgZipBtn" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow flex items-center gap-2 transition-all">
+                            <i data-lucide="archive" class="w-4 h-4"></i>
+                            <span>Download ZIP</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PDF Documents List & Page Cards -->
+                <div id="pdfToImgListContainer" class="flex flex-col gap-6">
+                    <!-- Files injected dynamically -->
+                </div>
+            </div>
+        </section>
+
+
+        <!-- ================= MODE 3: IMAGES TO PDF ================= -->
+        <section id="imgToPdfModeSection" class="mode-section hidden flex-col gap-6">
+            <div id="imgToPdfDropzone" class="w-full border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-400 bg-white dark:bg-slate-800/80 rounded-2xl p-10 text-center shadow-sm hover:shadow-md transition-all cursor-pointer group">
+                <div class="w-16 h-16 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                    <i data-lucide="image-plus" class="w-8 h-8"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800 dark:text-white mb-1">
+                    Select Images to Convert to PDF
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-5 max-w-md mx-auto">
+                    Convert JPG, PNG, WEBP, or BMP images into a clean PDF document with custom page layouts.
+                </p>
+                <div class="inline-flex items-center justify-center px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-700 shadow-sm gap-2">
+                    <i data-lucide="upload" class="w-4 h-4"></i> Select Images
+                </div>
+            </div>
+
+            <div id="imgToPdfWorkspace" class="hidden flex-col lg:flex-row gap-6">
+                <!-- Controls Side Panel -->
+                <div class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-col gap-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/60 pb-2">
+                            PDF Page Layout Options
+                        </h3>
+
+                        <!-- Page Size -->
+                        <div class="flex flex-col gap-1.5">
+                            <label for="pageSizeSelect" class="text-xs font-medium text-slate-700 dark:text-slate-300">Page Size</label>
+                            <select id="pageSizeSelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs">
+                                <option value="A4" selected>A4 (210 × 297 mm)</option>
+                                <option value="LETTER">US Letter (8.5 × 11 in)</option>
+                                <option value="AUTO">Fit to Image Aspect Ratio</option>
+                            </select>
+                        </div>
+
+                        <!-- Orientation -->
+                        <div class="flex flex-col gap-1.5">
+                            <label for="pageOrientationSelect" class="text-xs font-medium text-slate-700 dark:text-slate-300">Orientation</label>
+                            <select id="pageOrientationSelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs">
+                                <option value="AUTO" selected>Auto Detect</option>
+                                <option value="PORTRAIT">Portrait</option>
+                                <option value="LANDSCAPE">Landscape</option>
+                            </select>
+                        </div>
+
+                        <!-- Margins -->
+                        <div class="flex flex-col gap-1.5">
+                            <label for="pageMarginSelect" class="text-xs font-medium text-slate-700 dark:text-slate-300">Page Margin</label>
+                            <select id="pageMarginSelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs">
+                                <option value="NONE">No Margin (0mm)</option>
+                                <option value="SMALL" selected>Small (10mm)</option>
+                                <option value="MEDIUM">Medium (20mm)</option>
+                            </select>
+                        </div>
+
+                        <button id="generateImgToPdfBtn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all mt-2">
+                            <i data-lucide="file-check" class="w-4 h-4"></i> Create PDF Document
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Interactive Image Grid Panel -->
+                <div class="flex-1 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-3">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-sm font-bold text-slate-800 dark:text-white">Selected Images</h3>
+                            <span id="imgToPdfCountBadge" class="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs px-2.5 py-0.5 rounded-full font-semibold">0 Images</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="imgToPdfAddMoreBtn" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-medium flex items-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Images
+                            </button>
+                            <button id="imgToPdfClearBtn" class="px-3 py-1.5 bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400 hover:bg-red-100 rounded-lg text-xs font-medium">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sortable Grid for Images -->
+                    <div id="imgToPdfGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 min-h-[300px] p-2 bg-slate-50/50 dark:bg-slate-900/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                        <!-- Image cards dynamically populated -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 py-5 mt-auto transition-colors">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 dark:text-slate-400 gap-3">
+            <p>© PDF Mo Ito by Kyle Westley Intia</p>
+            <div class="flex space-x-4">
+                <span class="inline-flex items-center gap-1"><i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i> No Server Uploads</span>
+                <span class="inline-flex items-center gap-1"><i data-lucide="zap" class="w-4 h-4 text-amber-500"></i> Fast Processing</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // PDF.js worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // State Management Store
+        const state = {
+            currentTab: 'combiner', // 'combiner' | 'pdfToImg' | 'imgToPdf'
+            combiner: {
+                files: [], // Raw loaded source files
+                pages: [], // Global page list [{ id, fileId, pageNum, rotation, canvasUrl, fileType, originalImageBlob }]
+                sortableInstance: null
+            },
+            pdfToImg: {
+                files: [] // PDF document records
+            },
+            imgToPdf: {
+                images: [], // List of image objects [{ id, file, name, size, dataUrl, rotation }]
+                sortableInstance: null
+            }
+        };
+
+        // DOM Element Cache
+        const tabCombine = document.getElementById('tabCombine');
+        const tabPdfToImg = document.getElementById('tabPdfToImg');
+        const tabImgToPdf = document.getElementById('tabImgToPdf');
+
+        const combinerModeSection = document.getElementById('combinerModeSection');
+        const pdfToImgModeSection = document.getElementById('pdfToImgModeSection');
+        const imgToPdfModeSection = document.getElementById('imgToPdfModeSection');
+
+        const globalProgressCard = document.getElementById('globalProgressCard');
+        const progressBar = document.getElementById('progressBar');
+        const progressStatusText = document.getElementById('progressStatusText');
+        const progressPercentText = document.getElementById('progressPercentText');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const toastContainer = document.getElementById('toastContainer');
+
+        // Dark Theme Switcher
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // Initialize Lucide Icons
+        function refreshIcons() {
+            lucide.createIcons();
+        }
+        refreshIcons();
+
+        // Navigation Tab Switcher
+        function switchTab(mode) {
+            state.currentTab = mode;
+            
+            // Reset tab styles
+            [tabCombine, tabPdfToImg, tabImgToPdf].forEach(btn => {
+                btn.className = "tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white";
+            });
+
+            // Hide mode sections
+            [combinerModeSection, pdfToImgModeSection, imgToPdfModeSection].forEach(sec => sec.classList.add('hidden'));
+
+            if (mode === 'combiner') {
+                tabCombine.className = "tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm";
+                combinerModeSection.classList.remove('hidden');
+            } else if (mode === 'pdfToImg') {
+                tabPdfToImg.className = "tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm";
+                pdfToImgModeSection.classList.remove('hidden');
+            } else if (mode === 'imgToPdf') {
+                tabImgToPdf.className = "tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-sm";
+                imgToPdfModeSection.classList.remove('hidden');
+            }
+        }
+
+        tabCombine.addEventListener('click', () => switchTab('combiner'));
+        tabPdfToImg.addEventListener('click', () => switchTab('pdfToImg'));
+        tabImgToPdf.addEventListener('click', () => switchTab('imgToPdf'));
+
+
+        /* ==========================================================================
+           MODE 1: PDF COMBINER & REORDER LOGIC
+           ========================================================================== */
+
+        const combinerDropzone = document.getElementById('combinerDropzone');
+        const combinerFileInput = document.getElementById('combinerFileInput');
+        const combinerWorkspace = document.getElementById('combinerWorkspace');
+        const combinerQueueList = document.getElementById('combinerQueueList');
+        const combinerPageGrid = document.getElementById('combinerPageGrid');
+        const combinerClearBtn = document.getElementById('combinerClearBtn');
+        const combinerAddMoreBtn = document.getElementById('combinerAddMoreBtn');
+        const exportCombinedPdfBtn = document.getElementById('exportCombinedPdfBtn');
+        const totalPageCountBadge = document.getElementById('totalPageCountBadge');
+
+        // Drag and drop setup for combiner dropzone
+        combinerDropzone.addEventListener('click', () => combinerFileInput.click());
+        combinerAddMoreBtn.addEventListener('click', () => combinerFileInput.click());
+
+        setupDropZone(combinerDropzone, (files) => handleCombinerFiles(files));
+        combinerFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleCombinerFiles(Array.from(e.target.files));
+                combinerFileInput.value = '';
+            }
+        });
+
+        combinerClearBtn.addEventListener('click', () => {
+            state.combiner.files = [];
+            state.combiner.pages = [];
+            renderCombinerWorkspace();
+            showToast('Combiner queue cleared.', 'info');
+        });
+
+        // Initialize SortableJS on Page Grid
+        function initCombinerSortable() {
+            if (state.combiner.sortableInstance) {
+                state.combiner.sortableInstance.destroy();
+            }
+            state.combiner.sortableInstance = new Sortable(combinerPageGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: function (evt) {
+                    // Sync internal state with DOM page order
+                    const itemEls = combinerPageGrid.querySelectorAll('.page-card-item');
+                    const newPages = [];
+                    itemEls.forEach(el => {
+                        const pageId = el.dataset.pageId;
+                        const pObj = state.combiner.pages.find(p => p.id === pageId);
+                        if (pObj) newPages.push(pObj);
+                    });
+                    state.combiner.pages = newPages;
+                }
+            });
+        }
+
+        async function handleCombinerFiles(filesList) {
+            updateProgress(0, 'Loading documents and images...');
+            
+            for (let fIdx = 0; fIdx < filesList.length; fIdx++) {
+                const file = filesList[fIdx];
+                const fileId = 'file_' + Math.random().toString(36).substring(2, 9);
+                const fileType = file.type.includes('pdf') ? 'pdf' : 'image';
+
+                state.combiner.files.push({ id: fileId, name: file.name, size: file.size, type: fileType, rawFile: file });
+
+                if (fileType === 'pdf') {
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+                        for (let pNum = 1; pNum <= pdfDoc.numPages; pNum++) {
+                            const pdfPage = await pdfDoc.getPage(pNum);
+                            const viewport = pdfPage.getViewport({ scale: 0.3 });
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+
+                            await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
+
+                            state.combiner.pages.push({
+                                id: 'page_' + Math.random().toString(36).substring(2, 9),
+                                fileId: fileId,
+                                fileName: file.name,
+                                pageNum: pNum,
+                                rotation: 0,
+                                canvasUrl: canvas.toDataURL(),
+                                fileType: 'pdf',
+                                pdfArrayBuffer: arrayBuffer
+                            });
+                        }
+                    } catch (err) {
+                        console.error('Error loading PDF:', file.name, err);
+                        showToast(`Failed to parse PDF "${file.name}".`, 'error');
+                    }
+                } else {
+                    // Image File
+                    try {
+                        const dataUrl = await readFileAsDataURL(file);
+                        state.combiner.pages.push({
+                            id: 'page_' + Math.random().toString(36).substring(2, 9),
+                            fileId: fileId,
+                            fileName: file.name,
+                            pageNum: 1,
+                            rotation: 0,
+                            canvasUrl: dataUrl,
+                            fileType: 'image',
+                            originalImageBlob: file
+                        });
+                    } catch (err) {
+                        console.error('Error reading image:', err);
+                    }
+                }
+
+                updateProgress(Math.round(((fIdx + 1) / filesList.length) * 100), `Processed ${file.name}`);
+            }
+
+            hideProgress();
+            renderCombinerWorkspace();
+        }
+
+        function renderCombinerWorkspace() {
+            if (state.combiner.pages.length === 0) {
+                combinerDropzone.classList.remove('hidden');
+                combinerWorkspace.classList.add('hidden');
+                return;
+            }
+
+            combinerDropzone.classList.add('hidden');
+            combinerWorkspace.classList.remove('hidden');
+            combinerWorkspace.classList.add('flex');
+
+            totalPageCountBadge.textContent = `${state.combiner.pages.length} Pages`;
+
+            // Render Queue Files List
+            combinerQueueList.innerHTML = '';
+            state.combiner.files.forEach(f => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between text-xs p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700/70';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 truncate">
+                        <i data-lucide="${f.type === 'pdf' ? 'file-text' : 'image'}" class="w-4 h-4 text-blue-500 flex-shrink-0"></i>
+                        <span class="truncate font-medium text-slate-700 dark:text-slate-300" title="${f.name}">${f.name}</span>
+                    </div>
+                    <button class="remove-file-btn text-slate-400 hover:text-red-500 transition-colors p-1" title="Remove entire file">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                `;
+                item.querySelector('.remove-file-btn').addEventListener('click', () => {
+                    state.combiner.files = state.combiner.files.filter(x => x.id !== f.id);
+                    state.combiner.pages = state.combiner.pages.filter(p => p.fileId !== f.id);
+                    renderCombinerWorkspace();
+                });
+                combinerQueueList.appendChild(item);
+            });
+
+            // Render Page Grid Cards
+            combinerPageGrid.innerHTML = '';
+            state.combiner.pages.forEach((p, idx) => {
+                const pageCard = document.createElement('div');
+                pageCard.className = 'page-card-item relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2 group cursor-grab active:cursor-grabbing shadow-sm hover:shadow transition-all';
+                pageCard.dataset.pageId = p.id;
+
+                pageCard.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800 pb-1.5">
+                        <span class="truncate max-w-[90px]" title="${p.fileName}">${idx + 1}. ${p.fileName}</span>
+                        <span class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[10px]">p.${p.pageNum}</span>
+                    </div>
+
+                    <div class="relative min-h-[140px] flex items-center justify-center bg-slate-50 dark:bg-slate-950 rounded-lg overflow-hidden p-1">
+                        <img src="${p.canvasUrl}" class="max-h-[130px] w-auto object-contain transition-transform duration-200" style="transform: rotate(${p.rotation}deg);" />
+
+                        <!-- Action Overlay Controls -->
+                        <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-1">
+                            <button class="rotate-cw-btn p-1.5 bg-white text-slate-800 hover:bg-slate-100 rounded-lg shadow text-xs" title="Rotate CW">
+                                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button class="duplicate-btn p-1.5 bg-white text-slate-800 hover:bg-slate-100 rounded-lg shadow text-xs" title="Duplicate Page">
+                                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button class="delete-btn p-1.5 bg-red-600 text-white hover:bg-red-700 rounded-lg shadow text-xs" title="Delete Page">
+                                <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Wire action buttons
+                pageCard.querySelector('.rotate-cw-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    p.rotation = (p.rotation + 90) % 360;
+                    renderCombinerWorkspace();
+                });
+
+                pageCard.querySelector('.duplicate-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const dup = { ...p, id: 'page_' + Math.random().toString(36).substring(2, 9) };
+                    state.combiner.pages.splice(idx + 1, 0, dup);
+                    renderCombinerWorkspace();
+                });
+
+                pageCard.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.combiner.pages = state.combiner.pages.filter(x => x.id !== p.id);
+                    renderCombinerWorkspace();
+                });
+
+                combinerPageGrid.appendChild(pageCard);
+            });
+
+            refreshIcons();
+            initCombinerSortable();
+        }
+
+        // Bulk Rotate All Button
+        document.getElementById('rotateAllCwBtn').addEventListener('click', () => {
+            state.combiner.pages.forEach(p => p.rotation = (p.rotation + 90) % 360);
+            renderCombinerWorkspace();
+        });
+
+        // Generate Combined PDF using PDF-LIB
+        exportCombinedPdfBtn.addEventListener('click', async () => {
+            if (state.combiner.pages.length === 0) return;
+
+            updateProgress(10, 'Initializing PDF compilation...');
+
+            try {
+                const combinedPdf = await PDFLib.PDFDocument.create();
+                const pdfCache = new Map();
+
+                const enablePageNumbers = document.getElementById('enablePageNumbers').checked;
+                const pageNumPos = document.getElementById('pageNumberPos').value;
+                const headerText = document.getElementById('headerText').value.trim();
+                const watermarkText = document.getElementById('watermarkText').value.trim();
+
+                const helveticaFont = await combinedPdf.embedFont(PDFLib.StandardFonts.Helvetica);
+
+                const totalPages = state.combiner.pages.length;
+
+                for (let i = 0; i < totalPages; i++) {
+                    const pState = state.combiner.pages[i];
+                    updateProgress(Math.round(((i + 1) / totalPages) * 80), `Merging page ${i + 1} of ${totalPages}...`);
+
+                    let embeddedPage;
+
+                    if (pState.fileType === 'pdf') {
+                        let sourceDoc = pdfCache.get(pState.fileId);
+                        if (!sourceDoc) {
+                            sourceDoc = await PDFLib.PDFDocument.load(pState.pdfArrayBuffer);
+                            pdfCache.set(pState.fileId, sourceDoc);
+                        }
+                        const [copiedPage] = await combinedPdf.copyPages(sourceDoc, [pState.pageNum - 1]);
+                        embeddedPage = combinedPdf.addPage(copiedPage);
+                    } else {
+                        // Embed Image Page
+                        const imgBytes = await pState.originalImageBlob.arrayBuffer();
+                        let embeddedImg;
+                        if (pState.originalImageBlob.type.includes('png')) {
+                            embeddedImg = await combinedPdf.embedPng(imgBytes);
+                        } else {
+                            embeddedImg = await combinedPdf.embedJpg(imgBytes);
+                        }
+
+                        const page = combinedPdf.addPage([embeddedImg.width, embeddedImg.height]);
+                        page.drawImage(embeddedImg, {
+                            x: 0,
+                            y: 0,
+                            width: embeddedImg.width,
+                            height: embeddedImg.height,
+                        });
+                        embeddedPage = page;
+                    }
+
+                    // Apply Rotation
+                    if (pState.rotation !== 0) {
+                        const currentRot = embeddedPage.getRotation().angle;
+                        embeddedPage.setRotation(PDFLib.degrees(currentRot + pState.rotation));
+                    }
+
+                    const { width, height } = embeddedPage.getSize();
+
+                    // Optional Header Text
+                    if (headerText) {
+                        embeddedPage.drawText(headerText, {
+                            x: 30,
+                            y: height - 25,
+                            size: 10,
+                            font: helveticaFont,
+                            color: PDFLib.rgb(0.3, 0.3, 0.3),
+                        });
+                    }
+
+                    // Optional Watermark Text
+                    if (watermarkText) {
+                        embeddedPage.drawText(watermarkText, {
+                            x: width / 4,
+                            y: height / 2,
+                            size: 45,
+                            font: helveticaFont,
+                            color: PDFLib.rgb(0.8, 0.8, 0.8),
+                            rotate: PDFLib.degrees(45),
+                            opacity: 0.35,
+                        });
+                    }
+
+                    // Optional Page Numbers
+                    if (enablePageNumbers) {
+                        const pageNumString = `Page ${i + 1} of ${totalPages}`;
+                        let xPos = width / 2 - 25;
+                        if (pageNumPos === 'bottom-right') xPos = width - 100;
+                        if (pageNumPos === 'top-right') xPos = width - 100;
+
+                        let yPos = 20;
+                        if (pageNumPos === 'top-right') yPos = height - 25;
+
+                        embeddedPage.drawText(pageNumString, {
+                            x: xPos,
+                            y: yPos,
+                            size: 9,
+                            font: helveticaFont,
+                            color: PDFLib.rgb(0.4, 0.4, 0.4),
+                        });
+                    }
+                }
+
+                updateProgress(90, 'Finalizing document structure...');
+                const pdfBytes = await combinedPdf.save();
+                downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), `Combined_Document_${Date.now()}.pdf`);
+
+                hideProgress();
+                showToast('Successfully merged PDF document!', 'success');
+            } catch (err) {
+                console.error('PDF Merge Error:', err);
+                hideProgress();
+                showToast('Error building combined PDF.', 'error');
+            }
+        });
+
+
+        /* ==========================================================================
+           MODE 2: PDF TO IMAGE CONVERTER LOGIC
+           ========================================================================== */
+
+        const pdfToImgDropzone = document.getElementById('pdfToImgDropzone');
+        const pdfToImgFileInput = document.getElementById('pdfToImgFileInput');
+        const pdfToImgWorkspace = document.getElementById('pdfToImgWorkspace');
+        const pdfToImgListContainer = document.getElementById('pdfToImgListContainer');
+        const pdfToImgAddBtn = document.getElementById('pdfToImgAddBtn');
+        const pdfToImgClearBtn = document.getElementById('pdfToImgClearBtn');
+        const renderAllPdfToImgBtn = document.getElementById('renderAllPdfToImgBtn');
+        const downloadPdfToImgZipBtn = document.getElementById('downloadPdfToImgZipBtn');
+        const imgQualitySlider = document.getElementById('imgQualitySlider');
+        const imgQualityVal = document.getElementById('imgQualityVal');
+
+        imgQualitySlider.addEventListener('input', (e) => imgQualityVal.textContent = `${e.target.value}%`);
+
+        pdfToImgDropzone.addEventListener('click', () => pdfToImgFileInput.click());
+        pdfToImgAddBtn.addEventListener('click', () => pdfToImgFileInput.click());
+
+        setupDropZone(pdfToImgDropzone, (files) => handlePdfToImgFiles(files));
+        pdfToImgFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handlePdfToImgFiles(Array.from(e.target.files));
+                pdfToImgFileInput.value = '';
+            }
+        });
+
+        pdfToImgClearBtn.addEventListener('click', () => {
+            state.pdfToImg.files = [];
+            renderPdfToImgWorkspace();
+            showToast('PDF to Image queue cleared.', 'info');
+        });
+
+        async function handlePdfToImgFiles(filesList) {
+            const pdfs = filesList.filter(f => f.type.includes('pdf') || f.name.endsWith('.pdf'));
+            if (pdfs.length === 0) {
+                showToast('Please select valid PDF files.', 'warning');
+                return;
+            }
+
+            for (const file of pdfs) {
+                const fileId = 'pdf_img_' + Math.random().toString(36).substring(2, 9);
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    state.pdfToImg.files.push({
+                        id: fileId,
+                        name: file.name,
+                        pdfDoc: pdfDoc,
+                        totalPages: pdfDoc.numPages,
+                        pages: Array.from({ length: pdfDoc.numPages }, (_, i) => ({
+                            pageNum: i + 1,
+                            selected: true,
+                            rendered: false,
+                            blob: null,
+                            dataUrl: null
+                        }))
+                    });
+                } catch (err) {
+                    console.error('Error loading PDF for image conversion:', err);
+                }
+            }
+
+            renderPdfToImgWorkspace();
+            renderPdfToImgThumbnails();
+        }
+
+        function renderPdfToImgWorkspace() {
+            if (state.pdfToImg.files.length === 0) {
+                pdfToImgDropzone.classList.remove('hidden');
+                pdfToImgWorkspace.classList.add('hidden');
+                return;
+            }
+
+            pdfToImgDropzone.classList.add('hidden');
+            pdfToImgWorkspace.classList.remove('hidden');
+            pdfToImgWorkspace.classList.add('flex');
+
+            pdfToImgListContainer.innerHTML = '';
+
+            state.pdfToImg.files.forEach(fileObj => {
+                const docCard = document.createElement('div');
+                docCard.className = 'bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm';
+
+                docCard.innerHTML = `
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <i data-lucide="file-text" class="w-5 h-5 text-red-500"></i>
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-800 dark:text-white">${fileObj.name}</h3>
+                                <p class="text-[10px] text-slate-500">${fileObj.totalPages} Pages</p>
+                            </div>
+                        </div>
+                        <button class="remove-doc-btn text-slate-400 hover:text-red-500 p-1">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <div class="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        ${fileObj.pages.map(p => `
+                            <div class="page-convert-card bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2">
+                                <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                                    <span>Page ${p.pageNum}</span>
+                                    <span class="status-tag px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">Thumbnail</span>
+                                </div>
+                                <div class="relative min-h-[140px] flex items-center justify-center bg-white dark:bg-slate-950 rounded-lg overflow-hidden p-1 group">
+                                    <canvas id="canvas-img-${fileObj.id}-${p.pageNum}" class="max-h-[130px] w-auto object-contain"></canvas>
+                                    <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button class="single-download-btn ${p.dataUrl ? 'flex' : 'hidden'} px-2.5 py-1.5 bg-white text-slate-800 rounded-lg font-semibold text-xs shadow gap-1 items-center">
+                                            <i data-lucide="download" class="w-3.5 h-3.5 text-blue-600"></i> Download
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                docCard.querySelector('.remove-doc-btn').addEventListener('click', () => {
+                    state.pdfToImg.files = state.pdfToImg.files.filter(x => x.id !== fileObj.id);
+                    renderPdfToImgWorkspace();
+                });
+
+                fileObj.pages.forEach(p => {
+                    const downloadBtn = docCard.querySelector(`#canvas-img-${fileObj.id}-${p.pageNum}`).parentNode.querySelector('.single-download-btn');
+                    downloadBtn.addEventListener('click', () => {
+                        if (p.dataUrl) {
+                            const ext = document.getElementById('imgOutputFormat').value.split('/')[1];
+                            downloadBlob(p.blob, `${fileObj.name}_page_${p.pageNum}.${ext}`);
+                        }
+                    });
+                });
+
+                pdfToImgListContainer.appendChild(docCard);
+            });
+
+            refreshIcons();
+        }
+
+        async function renderPdfToImgThumbnails() {
+            for (const fileObj of state.pdfToImg.files) {
+                for (const p of fileObj.pages) {
+                    if (p.rendered) continue;
+                    try {
+                        const pdfPage = await fileObj.pdfDoc.getPage(p.pageNum);
+                        const canvas = document.getElementById(`canvas-img-${fileObj.id}-${p.pageNum}`);
+                        if (!canvas) continue;
+
+                        const viewport = pdfPage.getViewport({ scale: 0.3 });
+                        canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+
+                        await pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
+                    } catch (err) {
+                        console.error('Thumbnail render error:', err);
+                    }
+                }
+            }
+        }
+
+        // Render High Res Images Batch Action
+        renderAllPdfToImgBtn.addEventListener('click', async () => {
+            const scale = parseFloat(document.getElementById('dpiSelect').value);
+            const format = document.getElementById('imgOutputFormat').value;
+            const quality = parseFloat(imgQualitySlider.value) / 100;
+
+            let totalPages = 0;
+            state.pdfToImg.files.forEach(f => totalPages += f.pages.length);
+
+            if (totalPages === 0) return;
+
+            updateProgress(0, 'Starting high-res rendering...');
+
+            let count = 0;
+            for (const fileObj of state.pdfToImg.files) {
+                for (const p of fileObj.pages) {
+                    count++;
+                    updateProgress(Math.round((count / totalPages) * 100), `Rendering ${fileObj.name} - Page ${p.pageNum}...`);
+
+                    const pdfPage = await fileObj.pdfDoc.getPage(p.pageNum);
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    const viewport = pdfPage.getViewport({ scale: scale });
+
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    // Fill solid white background for transparent PDFs
+                    context.fillStyle = '#FFFFFF';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+
+                    await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
+
+                    p.dataUrl = canvas.toDataURL(format, quality);
+                    p.blob = await new Promise(res => canvas.toBlob(res, format, quality));
+                    p.rendered = true;
+
+                    // Update UI button visibility
+                    const mainCanvas = document.getElementById(`canvas-img-${fileObj.id}-${p.pageNum}`);
+                    if (mainCanvas) {
+                        const btn = mainCanvas.parentNode.querySelector('.single-download-btn');
+                        btn.classList.remove('hidden');
+                        btn.classList.add('flex');
+                    }
+                }
+            }
+
+            hideProgress();
+            downloadPdfToImgZipBtn.disabled = false;
+            showToast('All pages rendered into images successfully!', 'success');
+        });
+
+        // Download ZIP Archive
+        downloadPdfToImgZipBtn.addEventListener('click', async () => {
+            const zip = new JSZip();
+            const formatExt = document.getElementById('imgOutputFormat').value.split('/')[1];
+
+            state.pdfToImg.files.forEach(fileObj => {
+                const folder = zip.folder(fileObj.name.replace(/\.[^/.]+$/, ""));
+                fileObj.pages.forEach(p => {
+                    if (p.blob) {
+                        folder.file(`page_${p.pageNum}.${formatExt}`, p.blob);
+                    }
+                });
+            });
+
+            updateProgress(50, 'Packing images into ZIP archive...');
+            const zipContent = await zip.generateAsync({ type: 'blob' });
+            hideProgress();
+            downloadBlob(zipContent, `PDF_Images_${Date.now()}.zip`);
+        });
+
+
+        /* ==========================================================================
+           MODE 3: IMAGES TO PDF LOGIC
+           ========================================================================== */
+
+        const imgToPdfDropzone = document.getElementById('imgToPdfDropzone');
+        const imgToPdfFileInput = document.getElementById('imgToPdfFileInput');
+        const imgToPdfWorkspace = document.getElementById('imgToPdfWorkspace');
+        const imgToPdfGrid = document.getElementById('imgToPdfGrid');
+        const imgToPdfAddMoreBtn = document.getElementById('imgToPdfAddMoreBtn');
+        const imgToPdfClearBtn = document.getElementById('imgToPdfClearBtn');
+        const generateImgToPdfBtn = document.getElementById('generateImgToPdfBtn');
+        const imgToPdfCountBadge = document.getElementById('imgToPdfCountBadge');
+
+        imgToPdfDropzone.addEventListener('click', () => imgToPdfFileInput.click());
+        imgToPdfAddMoreBtn.addEventListener('click', () => imgToPdfFileInput.click());
+
+        setupDropZone(imgToPdfDropzone, (files) => handleImgToPdfFiles(files));
+        imgToPdfFileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleImgToPdfFiles(Array.from(e.target.files));
+                imgToPdfFileInput.value = '';
+            }
+        });
+
+        imgToPdfClearBtn.addEventListener('click', () => {
+            state.imgToPdf.images = [];
+            renderImgToPdfWorkspace();
+            showToast('Image queue cleared.', 'info');
+        });
+
+        function initImgToPdfSortable() {
+            if (state.imgToPdf.sortableInstance) {
+                state.imgToPdf.sortableInstance.destroy();
+            }
+            state.imgToPdf.sortableInstance = new Sortable(imgToPdfGrid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: function () {
+                    const itemEls = imgToPdfGrid.querySelectorAll('.img-card-item');
+                    const newImgs = [];
+                    itemEls.forEach(el => {
+                        const imgId = el.dataset.imgId;
+                        const obj = state.imgToPdf.images.find(x => x.id === imgId);
+                        if (obj) newImgs.push(obj);
+                    });
+                    state.imgToPdf.images = newImgs;
+                }
+            });
+        }
+
+        async function handleImgToPdfFiles(filesList) {
+            const validImages = filesList.filter(f => f.type.startsWith('image/'));
+
+            for (const file of validImages) {
+                const dataUrl = await readFileAsDataURL(file);
+                state.imgToPdf.images.push({
+                    id: 'img_' + Math.random().toString(36).substring(2, 9),
+                    file: file,
+                    name: file.name,
+                    size: file.size,
+                    dataUrl: dataUrl,
+                    rotation: 0
+                });
+            }
+
+            renderImgToPdfWorkspace();
+        }
+
+        function renderImgToPdfWorkspace() {
+            if (state.imgToPdf.images.length === 0) {
+                imgToPdfDropzone.classList.remove('hidden');
+                imgToPdfWorkspace.classList.add('hidden');
+                return;
+            }
+
+            imgToPdfDropzone.classList.add('hidden');
+            imgToPdfWorkspace.classList.remove('hidden');
+            imgToPdfWorkspace.classList.add('flex');
+
+            imgToPdfCountBadge.textContent = `${state.imgToPdf.images.length} Images`;
+
+            imgToPdfGrid.innerHTML = '';
+            state.imgToPdf.images.forEach((imgObj, idx) => {
+                const card = document.createElement('div');
+                card.className = 'img-card-item relative bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2 group cursor-grab shadow-sm';
+                card.dataset.imgId = imgObj.id;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500 truncate border-b border-slate-100 dark:border-slate-800 pb-1">
+                        <span class="truncate" title="${imgObj.name}">${idx + 1}. ${imgObj.name}</span>
+                    </div>
+
+                    <div class="relative min-h-[140px] flex items-center justify-center bg-slate-50 dark:bg-slate-950 rounded-lg overflow-hidden p-1">
+                        <img src="${imgObj.dataUrl}" class="max-h-[130px] w-auto object-contain transition-transform" style="transform: rotate(${imgObj.rotation}deg);" />
+                        <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button class="rotate-btn p-1.5 bg-white text-slate-800 rounded-lg shadow text-xs">
+                                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button class="remove-btn p-1.5 bg-red-600 text-white rounded-lg shadow text-xs">
+                                <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                card.querySelector('.rotate-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    imgObj.rotation = (imgObj.rotation + 90) % 360;
+                    renderImgToPdfWorkspace();
+                });
+
+                card.querySelector('.remove-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.imgToPdf.images = state.imgToPdf.images.filter(x => x.id !== imgObj.id);
+                    renderImgToPdfWorkspace();
+                });
+
+                imgToPdfGrid.appendChild(card);
+            });
+
+            refreshIcons();
+            initImgToPdfSortable();
+        }
+
+        // Generate PDF from Images using pdf-lib
+        generateImgToPdfBtn.addEventListener('click', async () => {
+            if (state.imgToPdf.images.length === 0) return;
+
+            updateProgress(10, 'Creating PDF document from images...');
+
+            try {
+                const pdfDoc = await PDFLib.PDFDocument.create();
+                const pageSizeOpt = document.getElementById('pageSizeSelect').value;
+                const orientationOpt = document.getElementById('pageOrientationSelect').value;
+                const marginOpt = document.getElementById('pageMarginSelect').value;
+
+                let margin = 0;
+                if (marginOpt === 'SMALL') margin = 28; // ~10mm
+                if (marginOpt === 'MEDIUM') margin = 56; // ~20mm
+
+                for (let i = 0; i < state.imgToPdf.images.length; i++) {
+                    const imgObj = state.imgToPdf.images[i];
+                    updateProgress(Math.round(((i + 1) / state.imgToPdf.images.length) * 80), `Adding image ${i + 1}...`);
+
+                    const imgBytes = await imgObj.file.arrayBuffer();
+                    let embeddedImg;
+
+                    if (imgObj.file.type.includes('png')) {
+                        embeddedImg = await pdfDoc.embedPng(imgBytes);
+                    } else {
+                        embeddedImg = await pdfDoc.embedJpg(imgBytes);
+                    }
+
+                    let pageWidth, pageHeight;
+
+                    if (pageSizeOpt === 'A4') {
+                        pageWidth = 595.28;
+                        pageHeight = 841.89;
+                    } else if (pageSizeOpt === 'LETTER') {
+                        pageWidth = 612;
+                        pageHeight = 792;
+                    } else {
+                        pageWidth = embeddedImg.width + margin * 2;
+                        pageHeight = embeddedImg.height + margin * 2;
+                    }
+
+                    if (orientationOpt === 'LANDSCAPE' || (orientationOpt === 'AUTO' && embeddedImg.width > embeddedImg.height && pageSizeOpt !== 'AUTO')) {
+                        if (pageWidth < pageHeight) {
+                            const tmp = pageWidth;
+                            pageWidth = pageHeight;
+                            pageHeight = tmp;
+                        }
+                    }
+
+                    const page = pdfDoc.addPage([pageWidth, pageHeight]);
+
+                    const availWidth = pageWidth - margin * 2;
+                    const availHeight = pageHeight - margin * 2;
+
+                    const widthRatio = availWidth / embeddedImg.width;
+                    const heightRatio = availHeight / embeddedImg.height;
+                    const scale = Math.min(widthRatio, heightRatio, 1);
+
+                    const drawWidth = embeddedImg.width * scale;
+                    const drawHeight = embeddedImg.height * scale;
+
+                    const x = (pageWidth - drawWidth) / 2;
+                    const y = (pageHeight - drawHeight) / 2;
+
+                    page.drawImage(embeddedImg, {
+                        x: x,
+                        y: y,
+                        width: drawWidth,
+                        height: drawHeight,
+                    });
+
+                    if (imgObj.rotation !== 0) {
+                        page.setRotation(PDFLib.degrees(imgObj.rotation));
+                    }
+                }
+
+                updateProgress(95, 'Saving PDF file...');
+                const pdfBytes = await pdfDoc.save();
+                downloadBlob(new Blob([pdfBytes], { type: 'application/pdf' }), `Images_Document_${Date.now()}.pdf`);
+
+                hideProgress();
+                showToast('Images converted to PDF successfully!', 'success');
+            } catch (err) {
+                console.error('Image to PDF error:', err);
+                hideProgress();
+                showToast('Failed to convert images to PDF.', 'error');
+            }
+        });
+
+
+        /* ==========================================================================
+           UTILITY & HELPER FUNCTIONS
+           ========================================================================== */
+
+        function setupDropZone(el, callback) {
+            el.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                el.classList.add('border-blue-500', 'bg-blue-50/50', 'dark:bg-slate-700/50');
+            });
+            ['dragleave', 'dragend'].forEach(type => {
+                el.addEventListener(type, () => {
+                    el.classList.remove('border-blue-500', 'bg-blue-50/50', 'dark:bg-slate-700/50');
+                });
+            });
+            el.addEventListener('drop', (e) => {
+                e.preventDefault();
+                el.classList.remove('border-blue-500', 'bg-blue-50/50', 'dark:bg-slate-700/50');
+                if (e.dataTransfer.files.length) {
+                    callback(Array.from(e.dataTransfer.files));
+                }
+            });
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function updateProgress(percent, statusText) {
+            globalProgressCard.classList.remove('hidden');
+            progressBar.style.width = `${percent}%`;
+            progressPercentText.textContent = `${percent}%`;
+            if (statusText) progressStatusText.textContent = statusText;
+        }
+
+        function hideProgress() {
+            globalProgressCard.classList.add('hidden');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            const bgColors = {
+                info: 'bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900',
+                success: 'bg-emerald-600 text-white',
+                warning: 'bg-amber-600 text-white',
+                error: 'bg-red-600 text-white'
+            };
+            const icons = {
+                info: 'info',
+                success: 'check-circle-2',
+                warning: 'alert-triangle',
+                error: 'alert-circle'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${bgColors[type]}`;
+            toast.innerHTML = `<i data-lucide="${icons[type]}" class="w-4 h-4"></i> <span>${message}</span>`;
+
+            toastContainer.appendChild(toast);
+            refreshIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
