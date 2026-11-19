@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Mo Ito</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="PDF to JPEG/favicon.ico">
+</head>
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -494,6 +498,13 @@
         }
         refreshIcons();
 
+        function makeUniqueId(prefix) {
+            if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                return `${prefix}_${window.crypto.randomUUID()}`;
+            }
+            return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        }
+
         // Navigation Tab Switcher
         function switchTab(mode) {
             state.currentTab = mode;
@@ -537,7 +548,6 @@
         const exportCombinedPdfBtn = document.getElementById('exportCombinedPdfBtn');
         const totalPageCountBadge = document.getElementById('totalPageCountBadge');
 
-        // Drag and drop setup for combiner dropzone
         combinerDropzone.addEventListener('click', () => combinerFileInput.click());
         combinerAddMoreBtn.addEventListener('click', () => combinerFileInput.click());
 
@@ -556,7 +566,6 @@
             showToast('Combiner queue cleared.', 'info');
         });
 
-        // Initialize SortableJS on Page Grid
         function initCombinerSortable() {
             if (state.combiner.sortableInstance) {
                 state.combiner.sortableInstance.destroy();
@@ -565,8 +574,7 @@
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
-                onEnd: function (evt) {
-                    // Sync internal state with DOM page order
+                onEnd: function () {
                     const itemEls = combinerPageGrid.querySelectorAll('.page-card-item');
                     const newPages = [];
                     itemEls.forEach(el => {
@@ -584,7 +592,7 @@
             
             for (let fIdx = 0; fIdx < filesList.length; fIdx++) {
                 const file = filesList[fIdx];
-                const fileId = 'file_' + Math.random().toString(36).substring(2, 9);
+                const fileId = makeUniqueId('file');
                 const fileType = file.type.includes('pdf') ? 'pdf' : 'image';
 
                 state.combiner.files.push({ id: fileId, name: file.name, size: file.size, type: fileType, rawFile: file });
@@ -592,7 +600,6 @@
                 if (fileType === 'pdf') {
                     try {
                         const arrayBuffer = await file.arrayBuffer();
-                        // Pass a slice to PDF.js so the main arrayBuffer stays intact for pdf-lib
                         const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
 
                         for (let pNum = 1; pNum <= pdfDoc.numPages; pNum++) {
@@ -606,7 +613,7 @@
                             await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
 
                             state.combiner.pages.push({
-                                id: 'page_' + Math.random().toString(36).substring(2, 9),
+                                id: makeUniqueId('page'),
                                 fileId: fileId,
                                 fileName: file.name,
                                 pageNum: pNum,
@@ -621,11 +628,10 @@
                         showToast(`Failed to parse PDF "${file.name}".`, 'error');
                     }
                 } else {
-                    // Image File
                     try {
                         const dataUrl = await readFileAsDataURL(file);
                         state.combiner.pages.push({
-                            id: 'page_' + Math.random().toString(36).substring(2, 9),
+                            id: makeUniqueId('page'),
                             fileId: fileId,
                             fileName: file.name,
                             pageNum: 1,
@@ -659,7 +665,6 @@
 
             totalPageCountBadge.textContent = `${state.combiner.pages.length} Pages`;
 
-            // Render Queue Files List
             combinerQueueList.innerHTML = '';
             state.combiner.files.forEach(f => {
                 const item = document.createElement('div');
@@ -681,7 +686,6 @@
                 combinerQueueList.appendChild(item);
             });
 
-            // Render Page Grid Cards
             combinerPageGrid.innerHTML = '';
             state.combiner.pages.forEach((p, idx) => {
                 const pageCard = document.createElement('div');
@@ -712,7 +716,6 @@
                     </div>
                 `;
 
-                // Wire action buttons
                 pageCard.querySelector('.rotate-cw-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     p.rotation = (p.rotation + 90) % 360;
@@ -721,7 +724,7 @@
 
                 pageCard.querySelector('.duplicate-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    const dup = { ...p, id: 'page_' + Math.random().toString(36).substring(2, 9) };
+                    const dup = { ...p, id: makeUniqueId('page') };
                     state.combiner.pages.splice(idx + 1, 0, dup);
                     renderCombinerWorkspace();
                 });
@@ -739,13 +742,11 @@
             initCombinerSortable();
         }
 
-        // Bulk Rotate All Button
         document.getElementById('rotateAllCwBtn').addEventListener('click', () => {
             state.combiner.pages.forEach(p => p.rotation = (p.rotation + 90) % 360);
             renderCombinerWorkspace();
         });
 
-        // Generate Combined PDF using PDF-LIB
         exportCombinedPdfBtn.addEventListener('click', async () => {
             if (state.combiner.pages.length === 0) return;
 
@@ -779,7 +780,6 @@
                         const [copiedPage] = await combinedPdf.copyPages(sourceDoc, [pState.pageNum - 1]);
                         embeddedPage = combinedPdf.addPage(copiedPage);
                     } else {
-                        // Embed Image Page
                         const imgBytes = await pState.originalImageBlob.arrayBuffer();
                         let embeddedImg;
                         if (pState.originalImageBlob.type.includes('png')) {
@@ -798,7 +798,6 @@
                         embeddedPage = page;
                     }
 
-                    // Apply Rotation
                     if (pState.rotation !== 0) {
                         const currentRot = embeddedPage.getRotation().angle;
                         embeddedPage.setRotation(PDFLib.degrees(currentRot + pState.rotation));
@@ -806,7 +805,6 @@
 
                     const { width, height } = embeddedPage.getSize();
 
-                    // Optional Header Text
                     if (headerText) {
                         embeddedPage.drawText(headerText, {
                             x: 30,
@@ -817,7 +815,6 @@
                         });
                     }
 
-                    // Optional Watermark Text
                     if (watermarkText) {
                         embeddedPage.drawText(watermarkText, {
                             x: width / 4,
@@ -830,7 +827,6 @@
                         });
                     }
 
-                    // Optional Page Numbers
                     if (enablePageNumbers) {
                         const pageNumString = `Page ${i + 1} of ${totalPages}`;
                         let xPos = width / 2 - 25;
@@ -897,24 +893,30 @@
             }
         });
 
+        function syncPdfToImgZipButton() {
+            const hasAnyBlob = state.pdfToImg.files.some(f => f.pages.some(p => Boolean(p.blob)));
+            downloadPdfToImgZipBtn.disabled = !hasAnyBlob;
+        }
+
         pdfToImgClearBtn.addEventListener('click', () => {
             state.pdfToImg.files = [];
+            downloadPdfToImgZipBtn.disabled = true;
             renderPdfToImgWorkspace();
             showToast('PDF to Image queue cleared.', 'info');
         });
 
         async function handlePdfToImgFiles(filesList) {
-            const pdfs = filesList.filter(f => f.type.includes('pdf') || f.name.endsWith('.pdf'));
+            const pdfs = filesList.filter(f => f.type.includes('pdf') || f.name.toLowerCase().endsWith('.pdf'));
             if (pdfs.length === 0) {
                 showToast('Please select valid PDF files.', 'warning');
                 return;
             }
 
             for (const file of pdfs) {
-                const fileId = 'pdf_img_' + Math.random().toString(36).substring(2, 9);
+                const fileId = makeUniqueId('pdf_img');
                 try {
                     const arrayBuffer = await file.arrayBuffer();
-                    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
                     
                     state.pdfToImg.files.push({
                         id: fileId,
@@ -931,9 +933,11 @@
                     });
                 } catch (err) {
                     console.error('Error loading PDF for image conversion:', err);
+                    showToast(`Failed to load "${file.name}".`, 'error');
                 }
             }
 
+            syncPdfToImgZipButton();
             renderPdfToImgWorkspace();
             renderPdfToImgThumbnails();
         }
@@ -974,12 +978,12 @@
                             <div class="page-convert-card bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2 flex flex-col gap-2">
                                 <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500">
                                     <span>Page ${p.pageNum}</span>
-                                    <span class="status-tag px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">Thumbnail</span>
+                                    <span class="status-tag px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">${p.rendered ? 'Rendered' : 'Thumbnail'}</span>
                                 </div>
                                 <div class="relative min-h-[140px] flex items-center justify-center bg-white dark:bg-slate-950 rounded-lg overflow-hidden p-1 group">
                                     <canvas id="canvas-img-${fileObj.id}-${p.pageNum}" class="max-h-[130px] w-auto object-contain"></canvas>
                                     <div class="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button class="single-download-btn ${p.dataUrl ? 'flex' : 'hidden'} px-2.5 py-1.5 bg-white text-slate-800 rounded-lg font-semibold text-xs shadow gap-1 items-center">
+                                        <button class="single-download-btn ${p.blob ? 'flex' : 'hidden'} px-2.5 py-1.5 bg-white text-slate-800 rounded-lg font-semibold text-xs shadow gap-1 items-center">
                                             <i data-lucide="download" class="w-3.5 h-3.5 text-blue-600"></i> Download
                                         </button>
                                     </div>
@@ -991,13 +995,14 @@
 
                 docCard.querySelector('.remove-doc-btn').addEventListener('click', () => {
                     state.pdfToImg.files = state.pdfToImg.files.filter(x => x.id !== fileObj.id);
+                    syncPdfToImgZipButton();
                     renderPdfToImgWorkspace();
                 });
 
                 fileObj.pages.forEach(p => {
                     const downloadBtn = docCard.querySelector(`#canvas-img-${fileObj.id}-${p.pageNum}`).parentNode.querySelector('.single-download-btn');
                     downloadBtn.addEventListener('click', () => {
-                        if (p.dataUrl) {
+                        if (p.blob) {
                             const ext = document.getElementById('imgOutputFormat').value.split('/')[1];
                             downloadBlob(p.blob, `${fileObj.name}_page_${p.pageNum}.${ext}`);
                         }
@@ -1013,15 +1018,14 @@
         async function renderPdfToImgThumbnails() {
             for (const fileObj of state.pdfToImg.files) {
                 for (const p of fileObj.pages) {
-                    if (p.rendered) continue;
                     try {
                         const pdfPage = await fileObj.pdfDoc.getPage(p.pageNum);
                         const canvas = document.getElementById(`canvas-img-${fileObj.id}-${p.pageNum}`);
                         if (!canvas) continue;
 
                         const viewport = pdfPage.getViewport({ scale: 0.3 });
-                        canvas.width = viewport.width;
-                        canvas.height = viewport.height;
+                        canvas.width = Math.max(1, Math.floor(viewport.width));
+                        canvas.height = Math.max(1, Math.floor(viewport.height));
 
                         await pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport: viewport }).promise;
                     } catch (err) {
@@ -1042,60 +1046,89 @@
 
             if (totalPages === 0) return;
 
+            downloadPdfToImgZipBtn.disabled = true;
             updateProgress(0, 'Starting high-res rendering...');
 
             let count = 0;
+            let failedCount = 0;
+
             for (const fileObj of state.pdfToImg.files) {
                 for (const p of fileObj.pages) {
                     count++;
                     updateProgress(Math.round((count / totalPages) * 100), `Rendering ${fileObj.name} - Page ${p.pageNum}...`);
 
-                    const pdfPage = await fileObj.pdfDoc.getPage(p.pageNum);
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    const viewport = pdfPage.getViewport({ scale: scale });
+                    try {
+                        const pdfPage = await fileObj.pdfDoc.getPage(p.pageNum);
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        const viewport = pdfPage.getViewport({ scale: scale });
 
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
+                        canvas.width = Math.max(1, Math.floor(viewport.width));
+                        canvas.height = Math.max(1, Math.floor(viewport.height));
 
-                    // Fill solid white background for transparent PDFs
-                    context.fillStyle = '#FFFFFF';
-                    context.fillRect(0, 0, canvas.width, canvas.height);
+                        // Fill solid white background for transparent PDFs
+                        context.fillStyle = '#FFFFFF';
+                        context.fillRect(0, 0, canvas.width, canvas.height);
 
-                    await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
+                        await pdfPage.render({ canvasContext: context, viewport: viewport }).promise;
 
-                    p.dataUrl = canvas.toDataURL(format, quality);
-                    p.blob = await new Promise(res => canvas.toBlob(res, format, quality));
-                    p.rendered = true;
+                        const blob = await new Promise(res => canvas.toBlob(res, format, quality));
+                        if (!blob) {
+                            failedCount++;
+                            continue;
+                        }
 
-                    // Update UI button visibility
-                    const mainCanvas = document.getElementById(`canvas-img-${fileObj.id}-${p.pageNum}`);
-                    if (mainCanvas) {
-                        const btn = mainCanvas.parentNode.querySelector('.single-download-btn');
-                        btn.classList.remove('hidden');
-                        btn.classList.add('flex');
+                        p.dataUrl = canvas.toDataURL(format, quality);
+                        p.blob = blob;
+                        p.rendered = true;
+
+                        const mainCanvas = document.getElementById(`canvas-img-${fileObj.id}-${p.pageNum}`);
+                        if (mainCanvas) {
+                            const btn = mainCanvas.parentNode.querySelector('.single-download-btn');
+                            btn.classList.remove('hidden');
+                            btn.classList.add('flex');
+                            const card = mainCanvas.closest('.page-convert-card');
+                            const tag = card ? card.querySelector('.status-tag') : null;
+                            if (tag) tag.textContent = 'Rendered';
+                        }
+                    } catch (err) {
+                        console.error(`Render error on ${fileObj.name} page ${p.pageNum}:`, err);
+                        failedCount++;
                     }
                 }
             }
 
             hideProgress();
-            downloadPdfToImgZipBtn.disabled = false;
-            showToast('All pages rendered into images successfully!', 'success');
+            syncPdfToImgZipButton();
+
+            if (failedCount > 0) {
+                showToast(`Rendered with ${failedCount} page error(s). Check console for details.`, 'warning');
+            } else if (!downloadPdfToImgZipBtn.disabled) {
+                showToast('All pages rendered into images successfully!', 'success');
+            }
         });
 
         // Download ZIP Archive
         downloadPdfToImgZipBtn.addEventListener('click', async () => {
             const zip = new JSZip();
             const formatExt = document.getElementById('imgOutputFormat').value.split('/')[1];
+            let addedFiles = 0;
 
-            state.pdfToImg.files.forEach(fileObj => {
-                const folder = zip.folder(fileObj.name.replace(/\.[^/.]+$/, ""));
+            state.pdfToImg.files.forEach((fileObj, idx) => {
+                const cleanBase = fileObj.name.replace(/\.[^/.]+$/, '').trim() || `Document_${idx + 1}`;
+                const folder = zip.folder(cleanBase);
                 fileObj.pages.forEach(p => {
                     if (p.blob) {
                         folder.file(`page_${p.pageNum}.${formatExt}`, p.blob);
+                        addedFiles++;
                     }
                 });
             });
+
+            if (addedFiles === 0) {
+                showToast('No rendered images available to zip. Click "Render All Pages" first.', 'warning');
+                return;
+            }
 
             updateProgress(50, 'Packing images into ZIP archive...');
             const zipContent = await zip.generateAsync({ type: 'blob' });
@@ -1160,7 +1193,7 @@
             for (const file of validImages) {
                 const dataUrl = await readFileAsDataURL(file);
                 state.imgToPdf.images.push({
-                    id: 'img_' + Math.random().toString(36).substring(2, 9),
+                    id: makeUniqueId('img'),
                     file: file,
                     name: file.name,
                     size: file.size,
@@ -1228,7 +1261,6 @@
             initImgToPdfSortable();
         }
 
-        // Generate PDF from Images using pdf-lib
         generateImgToPdfBtn.addEventListener('click', async () => {
             if (state.imgToPdf.images.length === 0) return;
 
@@ -1241,8 +1273,8 @@
                 const marginOpt = document.getElementById('pageMarginSelect').value;
 
                 let margin = 0;
-                if (marginOpt === 'SMALL') margin = 28; // ~10mm
-                if (marginOpt === 'MEDIUM') margin = 56; // ~20mm
+                if (marginOpt === 'SMALL') margin = 28;
+                if (marginOpt === 'MEDIUM') margin = 56;
 
                 for (let i = 0; i < state.imgToPdf.images.length; i++) {
                     const imgObj = state.imgToPdf.images[i];
@@ -1406,3 +1438,4 @@
     </script>
 </body>
 </html>
+```[cite: 1]
